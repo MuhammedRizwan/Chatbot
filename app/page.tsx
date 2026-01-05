@@ -1,29 +1,28 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import { PaperClipIcon, FaceSmileIcon, PaperAirplaneIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import EmojiPicker, { Theme } from "emoji-picker-react";
+import { useState } from "react";
+import Sidebar from "./components/Sidebar";
+import MobileDrawer from "./components/MobileDrawer";
+import Header from "./components/Header";
+import MessagesList from "./components/MessagesList";
+import Composer from "./components/Composer";
 
 export default function ChatUI() {
   const [messages, setMessages] = useState<{ id: number; from: string; text: string }[]>([]);
 
   const [input, setInput] = useState("");
-  const [showEmoji, setShowEmoji] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<any>(null);
   const [editValue, setEditValue] = useState("");
   const [menuId, setMenuId] = useState<number | null>(null);
-
-
-  const emojiRef = useRef<HTMLDivElement>(null);   // 👈 reference to picker
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
     const userMessage = { id: Date.now(), from: "user", text: input };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     const textToSend = input;
     setInput("");
-    setShowEmoji(false);
 
     try {
       const res = await fetch("/api/chatbot/message", {
@@ -34,40 +33,17 @@ export default function ChatUI() {
 
       const data = await res.json();
 
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { id: Date.now(), from: "bot", text: data.reply }
+        { id: Date.now(), from: "bot", text: data.reply },
       ]);
-
     } catch (err) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { id: Date.now(), from: "bot", text: "Oops — server broke 💀" }
+        { id: Date.now(), from: "bot", text: "Oops — server broke 💀" },
       ]);
     }
   };
-
-
-  const addEmoji = (e: any) => {
-    let sym = e.unified.split("-");
-    let codesArray = sym.map((el: string) => "0x" + el);
-    let emoji = String.fromCodePoint(...codesArray);
-    setInput((prev) => prev + emoji);
-  };
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
-        setShowEmoji(false);
-      }
-    }
-
-    if (showEmoji) {
-      document.addEventListener("mousedown", handleClick);
-    }
-
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showEmoji]);
 
   const startEdit = (msg: any) => {
     setEditingId(msg.id);
@@ -75,47 +51,42 @@ export default function ChatUI() {
   };
 
   const saveEdit = async () => {
-  const updatedText = editValue;
-  const editedMessageId = editingId;
+    const updatedText = editValue;
+    const editedMessageId = editingId;
 
+    setMessages((prev) => prev.map((m) => (m.id === editedMessageId ? { ...m, text: updatedText } : m)));
 
-  setMessages(prev =>
-    prev.map(m =>
-      m.id === editedMessageId ? { ...m, text: updatedText } : m
-    )
-  );
+    setEditingId(null);
+    setEditValue("");
 
-  setEditingId(null);
-  setEditValue("");
+    try {
+      const res = await fetch("/api/chatbot/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: updatedText }),
+      });
 
-  try {
-    const res = await fetch("/api/chatbot/message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: updatedText }),
-    });
+      const data = await res.json();
 
-    const data = await res.json();
-
-    setMessages(prev => [
-      ...prev,
-      { id: Date.now(), from: "bot", text: data.reply }
-    ]);
-
-  } catch (err) {
-    setMessages(prev => [
-      ...prev,
-      { id: Date.now(), from: "bot", text: "Couldn't refresh after edit 😅" }
-    ]);
-  }
-};
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), from: "bot", text: data.reply },
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), from: "bot", text: "Couldn't refresh after edit 😅" },
+      ]);
+    }
+  };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditValue("");
   };
+
   const deleteMessage = (id: number) => {
-    setMessages(prev => prev.filter(m => m.id !== id));
+    setMessages((prev) => prev.filter((m) => m.id !== id));
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,10 +96,7 @@ export default function ChatUI() {
     const formData = new FormData();
     formData.append("file", file);
 
-    setMessages(prev => [
-      ...prev,
-      { id: Date.now(), from: "user", text: `📎 Sent: ${file.name}` }
-    ]);
+    setMessages((prev) => [...prev, { id: Date.now(), from: "user", text: `📎 Sent: ${file.name}` }]);
 
     try {
       const res = await fetch("/api/chatbot/file", {
@@ -138,166 +106,35 @@ export default function ChatUI() {
 
       const data = await res.json();
 
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now(), from: "bot", text: data.reply }
-      ]);
+      setMessages((prev) => [...prev, { id: Date.now(), from: "bot", text: data.reply }]);
     } catch {
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now(), from: "bot", text: "Couldn't read file 😭" }
-      ]);
+      setMessages((prev) => [...prev, { id: Date.now(), from: "bot", text: "Couldn't read file 😭" }]);
     }
   };
 
-
-
   return (
     <main className="h-screen w-full bg-gray-100 flex">
+      <Sidebar />
 
-      <aside className="w-72 bg-white border-r hidden md:flex flex-col">
-        <header className="p-4 border-b font-semibold">
-          Chats
-        </header>
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 hover:bg-gray-100 cursor-pointer">
-            <p className="font-medium">Chatbot</p>
-            <p className="text-sm text-gray-500">Always online 🤖</p>
-          </div>
-        </div>
-      </aside>
+      <MobileDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <section className="flex-1 flex flex-col">
-        <header className="p-4 bg-white border-b flex items-center gap-2">
-          <div>
-          <div className="font-semibold">Chatbot</div>
-           <p className="text-sm text-gray-400">Repond your message and explain about images and pdf given</p>
-          </div>
-        </header>
+        <Header onOpenSidebar={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 p-4 overflow-y-auto space-y-3">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`relative max-w-xs p-2 rounded-lg text-sm ${msg.from === "user"
-                ? "ml-auto bg-green-500 text-white"
-                : "bg-white border"
-                }`}
-            >
-              {editingId === msg.id ? (
-                <div className="space-y-2">
-                  <input
-                    className="w-full px-2 py-1 rounded text-black"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                  />
+        <MessagesList
+          messages={messages}
+          editingId={editingId}
+          editValue={editValue}
+          setEditValue={setEditValue}
+          startEdit={startEdit}
+          saveEdit={saveEdit}
+          cancelEdit={cancelEdit}
+          deleteMessage={deleteMessage}
+          menuId={menuId}
+          setMenuId={setMenuId}
+        />
 
-                  <div className="flex gap-2 justify-end">
-                    <button className="text-xs" onClick={saveEdit}>Save</button>
-                    <button className="text-xs" onClick={cancelEdit}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className="relative group flex justify-between gap-1"
-                >
-                  <p className="whitespace-pre-line">
-                    {msg.text}
-                  </p>
-
-                  {msg.from === "user" && (
-                    <button
-                      onClick={() => setMenuId(menuId === msg.id ? null : msg.id)}
-                      className="hidden group-hover:flex absolute top-0 right-1 text-white/80 hover:text-white"
-                    >
-                      <ChevronDownIcon className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-
-              )}
-
-              {menuId === msg.id && (
-                <div className="absolute right-0 mt-2 bg-white text-gray-800 border shadow rounded text-sm z-50">
-                  <button
-                    className="block px-4 py-2 hover:bg-gray-100 w-full text-left"
-                    onClick={() => {
-                      setMenuId(null);
-                      startEdit(msg);
-                    }}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    className="block px-4 py-2 hover:bg-gray-100 w-full text-left text-red-600"
-                    onClick={() => {
-                      setMenuId(null);
-                      deleteMessage(msg.id);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-
-        </div>
-
-
-
-        {showEmoji && (
-          <div
-            ref={emojiRef}
-            className="absolute bottom-17 left-73 z-50 shadow-xl"
-          >
-            <EmojiPicker
-              onEmojiClick={(emoji) => addEmoji(emoji)}
-              theme={Theme.DARK}
-              previewConfig={{ showPreview: false }}
-            />
-          </div>
-        )}
-
-
-        {/* Input */}
-        <footer className="p-3 bg-white border-t flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded" onClick={() => setShowEmoji(!showEmoji)}>
-            <FaceSmileIcon className="w-6 h-6" />
-          </button>
-
-          <button
-            className="p-2 hover:bg-gray-100 rounded"
-            onClick={() => document.getElementById("fileInput")?.click()}
-          >
-            <PaperClipIcon className="w-6 h-6" />
-          </button>
-          <input
-            id="fileInput"
-            type="file"
-            accept="image/*,.pdf"
-            className="hidden"
-            onChange={handleFile}
-          />
-
-          <textarea
-            className="flex-1 border rounded-2xl px-4 py-2 outline-none resize-none leading-tight"
-            placeholder="Type a message…"
-            value={input}
-            rows={1}
-            onChange={(e) => setInput(e.target.value)}
-          />
-
-          <button
-            onClick={sendMessage}
-            className="px-4 py-2 bg-green-700 text-white rounded-full"
-          >
-            <PaperAirplaneIcon className="w-6 h-7 rounded-full" />
-          </button>
-        </footer>
+        <Composer input={input} setInput={setInput} sendMessage={sendMessage} handleFile={handleFile} />
       </section>
     </main>
   );
