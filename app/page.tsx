@@ -175,7 +175,10 @@ export default function ChatUI() {
       <section className="flex-1 flex flex-col">
         {/* Top bar */}
         <header className="p-4 bg-white border-b flex items-center gap-2">
+          <div>
           <div className="font-semibold">Chatbot</div>
+           <p className="text-sm text-gray-400">Repond your message and explain about images and pdf given</p>
+          </div>
         </header>
 
         {/* Messages */}
