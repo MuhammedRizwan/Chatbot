@@ -55,7 +55,6 @@ export default function ChatUI() {
     setInput((prev) => prev + emoji);
   };
 
-  // 👇 close picker when clicking outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
@@ -79,7 +78,7 @@ export default function ChatUI() {
   const updatedText = editValue;
   const editedMessageId = editingId;
 
-  // 1️⃣ update the user message locally
+
   setMessages(prev =>
     prev.map(m =>
       m.id === editedMessageId ? { ...m, text: updatedText } : m
@@ -89,7 +88,6 @@ export default function ChatUI() {
   setEditingId(null);
   setEditValue("");
 
-  // 2️⃣ send edited text to backend (new response)
   try {
     const res = await fetch("/api/chatbot/message", {
       method: "POST",
@@ -99,7 +97,6 @@ export default function ChatUI() {
 
     const data = await res.json();
 
-    // 3️⃣ append NEW bot reply
     setMessages(prev => [
       ...prev,
       { id: Date.now(), from: "bot", text: data.reply }
@@ -171,9 +168,7 @@ export default function ChatUI() {
         </div>
       </aside>
 
-      {/* Chat Area */}
       <section className="flex-1 flex flex-col">
-        {/* Top bar */}
         <header className="p-4 bg-white border-b flex items-center gap-2">
           <div>
           <div className="font-semibold">Chatbot</div>
@@ -181,7 +176,6 @@ export default function ChatUI() {
           </div>
         </header>
 
-        {/* Messages */}
         <div className="flex-1 p-4 overflow-y-auto space-y-3">
           {messages.map((msg) => (
             <div
